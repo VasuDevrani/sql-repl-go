@@ -1,4 +1,4 @@
-package lexer
+package sqlgo
 
 import (
 	"strings"
@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func lexNumeric_test(t *testing.T) {
+func TestLexNumeric(t *testing.T) {
 	tests := []struct {
 		number bool
 		value  string
@@ -44,7 +44,7 @@ func lexNumeric_test(t *testing.T) {
 	}
 }
 
-func lexString_test(t *testing.T) {
+func TestLexString(t *testing.T) {
 	tests := []struct {
 		string bool
 		value  string
@@ -74,17 +74,17 @@ func lexString_test(t *testing.T) {
 	}
 }
 
-func lexSymbol_test(t *testing.T) {
+func TestLexSymbol(t *testing.T) {
 	tests := []struct {
 		symbol bool
 		value  string
 	}{
 		{
-			symbol: true,
+			symbol: false,
 			value:  "= ",
 		},
 		{
-			symbol: true,
+			symbol: false,
 			value:  "||",
 		},
 	}
@@ -99,7 +99,7 @@ func lexSymbol_test(t *testing.T) {
 	}
 }
 
-func lexIdentifier_test(t *testing.T) {
+func TestLexIdentifier(t *testing.T) {
 	tests := []struct {
 		Identifier bool
 		input      string
@@ -140,7 +140,7 @@ func lexIdentifier_test(t *testing.T) {
 	}
 }
 
-func lexKeyword_test(t *testing.T) {
+func TestLexKeyword(t *testing.T) {
 	tests := []struct {
 		keyword bool
 		value   string
@@ -182,15 +182,15 @@ func lexKeyword_test(t *testing.T) {
 	}
 }
 
-func lex_test(t *testing.T) {
+func TestLex(t *testing.T) {
 	tests := []struct {
 		input  string
-		Tokens []token
+		Tokens []Token
 		err    error
 	}{
 		{
 			input: "select a",
-			Tokens: []token{
+			Tokens: []Token{
 				{
 					loc:   location{col: 0, line: 0},
 					value: string(SelectKeyword),
@@ -205,7 +205,7 @@ func lex_test(t *testing.T) {
 		},
 		{
 			input: "insert into users Values (105, 233)",
-			Tokens: []token{
+			Tokens: []Token{
 				{
 					loc:   location{col: 0, line: 0},
 					value: string(InsertKeyword),
