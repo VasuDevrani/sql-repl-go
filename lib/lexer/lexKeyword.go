@@ -1,9 +1,9 @@
-package gosql
+package lexer
 
 func lexKeyword(source string, ic cursor) (*token, cursor, bool) {
-    cur := ic
-    keywords := []keyword{
-        SelectKeyword,
+	cur := ic
+	keywords := []keyword{
+		SelectKeyword,
 		InsertKeyword,
 		ValuesKeyword,
 		TableKeyword,
@@ -27,20 +27,20 @@ func lexKeyword(source string, ic cursor) (*token, cursor, bool) {
 		NullKeyword,
 		LimitKeyword,
 		OffsetKeyword,
-    }
+	}
 
-    var options []string
-    for _, k := range keywords {
-        options = append(options, string(k))
-    }
+	var options []string
+	for _, k := range keywords {
+		options = append(options, string(k))
+	}
 
-    match := longestMatch(source, ic, options)
-    if match == "" {
-        return nil, ic, false
-    }
+	match := longestMatch(source, ic, options)
+	if match == "" {
+		return nil, ic, false
+	}
 
-    cur.pointer = ic.pointer + uint(len(match))
-    cur.loc.col = ic.loc.col + uint(len(match))
+	cur.pointer = ic.pointer + uint(len(match))
+	cur.loc.col = ic.loc.col + uint(len(match))
 
 	Kind := keywordKind
 	if match == string(TrueKeyword) || match == string(FalseKeyword) {
@@ -51,9 +51,9 @@ func lexKeyword(source string, ic cursor) (*token, cursor, bool) {
 		Kind = nullKind
 	}
 
-    return &token{
-        value: match,
-        kind:  Kind,
-        loc:   ic.loc,
-    }, cur, true
+	return &token{
+		value: match,
+		kind:  Kind,
+		loc:   ic.loc,
+	}, cur, true
 }
