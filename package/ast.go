@@ -38,6 +38,7 @@ type expression struct {
 type columnDefinition struct {
     name     Token
     datatype Token
+    primaryKey bool
 }
 
 type CreateTableStatement struct {
