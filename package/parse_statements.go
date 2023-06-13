@@ -90,3 +90,47 @@ func parseInsertStatement(tokens []*Token, initialCursor uint, delimiter Token) 
         values: values,
     }, cursor, true
 }
+
+func parseCreateTableStatement(tokens []*Token, initialCursor uint, delimiter Token) (*CreateTableStatement, uint, bool) {
+    cursor := initialCursor
+
+    if !expectToken(tokens, cursor, tokenFromKeyword(CreateKeyword)) {
+        return nil, initialCursor, false
+    }
+    cursor++
+
+    if !expectToken(tokens, cursor, tokenFromKeyword(TableKeyword)) {
+        return nil, initialCursor, false
+    }
+    cursor++
+
+    name, newCursor, ok := parseToken(tokens, cursor, identifierKind)
+    if !ok {
+        helpMessage(tokens, cursor, "Expected table name")
+        return nil, initialCursor, false
+    }
+    cursor = newCursor
+
+    if !expectToken(tokens, cursor, tokenFromSymbol(leftparenSymbol)) {
+        helpMessage(tokens, cursor, "Expected left parenthesis")
+        return nil, initialCursor, false
+    }
+    cursor++
+
+    cols, newCursor, ok := parseColumnDefinitions(tokens, cursor, tokenFromSymbol(rightparenSymbol))
+    if !ok {
+        return nil, initialCursor, false
+    }
+    cursor = newCursor
+
+    if !expectToken(tokens, cursor, tokenFromSymbol(rightparenSymbol)) {
+        helpMessage(tokens, cursor, "Expected right parenthesis")
+        return nil, initialCursor, false
+    }
+    cursor++
+
+    return &CreateTableStatement{
+        name: *name,
+        cols: cols,
+    }, cursor, true
+}
