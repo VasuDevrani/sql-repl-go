@@ -80,33 +80,36 @@ func (t *Token) equals(other *Token) bool {
 type lexer func(string, cursor) (*Token, cursor, bool)
 
 func lex(source string) ([]*Token, error) {
-	tokens := []*Token{}
-	cur := cursor{}
+    tokens := []*Token{}
+    cur := cursor{}
 
 lex:
-	for cur.pointer < uint(len(source)) {
-		lexers := []lexer{lexKeyword, lexSymbol, lexString, lexNumeric, lexIdentifier}
-		for _, l := range lexers {
-			if token, newCursor, ok := l(source, cur); ok {
-				cur = newCursor
+    for cur.pointer < uint(len(source)) {
+        lexers := []lexer{lexKeyword, lexSymbol, lexString, lexNumeric, lexIdentifier}
+        for _, l := range lexers {
+            if token, newCursor, ok := l(source, cur); ok {
+                cur = newCursor
 
-				// Omit nil tokens for valid, but empty syntax like newlines
-				if token != nil {
-					tokens = append(tokens, token)
-				}
+                // Omit nil tokens for valid, but empty syntax like newlines
+                if token != nil {
+                    tokens = append(tokens, token)
+                } 
 
-				continue lex
-			}
+                continue lex
+            }
+        }
+
+        hint := ""
+        if len(tokens) > 0 {
+            hint = " after " + tokens[len(tokens)-1].value
+        }
+		if(cur.pointer == (uint(len(source)) - 1)) {
+			break;
 		}
+        return nil, fmt.Errorf("Unable to lex token%s, at %d:%d", hint, cur.loc.line, cur.loc.col)
+    }
 
-		hint := ""
-		if len(tokens) > 0 {
-			hint = " after " + tokens[len(tokens)-1].value
-		}
-		return nil, fmt.Errorf("Unable to lex token%s, at %d:%d", hint, cur.loc.line, cur.loc.col)
-	}
-
-	return tokens, nil
+    return tokens, nil
 }
 
 // longestMatch iterates through a source string starting at the given
@@ -354,16 +357,17 @@ func lexCharacterDelimited(source string, ic cursor, delimiter byte) (*Token, cu
 		if c == delimiter {
 			// SQL escapes are via double characters, not backslash.
 			if cur.pointer+1 >= uint(len(source)) || source[cur.pointer+1] != delimiter {
+				cur.pointer++
+				cur.loc.col++
 				return &Token{
 					value: string(value),
 					loc:   ic.loc,
 					kind:  stringKind,
 				}, cur, true
-			} else {
-				value = append(value, delimiter)
-				cur.pointer++
-				cur.loc.col++
 			}
+			value = append(value, delimiter)
+			cur.pointer++
+			cur.loc.col++
 		}
 
 		value = append(value, c)

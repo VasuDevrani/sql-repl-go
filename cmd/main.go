@@ -1,7 +1,11 @@
 package main
 
-import "fmt"
+import (
+	pck "github.com/vasudevrani/sql-repl-go/package"
+)
 
 func main() {
-	fmt.Print("hello")
+	mb := pck.NewMemoryBackend()
+
+	pck.RunRepl(mb)
 }

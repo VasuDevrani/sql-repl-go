@@ -57,7 +57,7 @@ func parseExpressions(tokens []*Token, initialCursor uint, delimiters []Token) (
 outer:
     for {
         if cursor >= uint(len(tokens)) {
-            return nil, initialCursor, false
+            break;
         }
 
         // Look for delimiter
