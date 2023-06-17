@@ -48,6 +48,15 @@ const (
 	commaSymbol      symbol = ","
 	leftparenSymbol  symbol = "("
 	rightparenSymbol symbol = ")"
+	EqSymbol         symbol = "="
+	NeqSymbol        symbol = "<>"
+	NeqSymbol2       symbol = "!="
+	ConcatSymbol     symbol = "||"
+	PlusSymbol       symbol = "+"
+	LtSymbol         symbol = "<"
+	LteSymbol        symbol = "<="
+	GtSymbol         symbol = ">"
+	GteSymbol        symbol = ">="
 )
 
 type tokenKind uint
@@ -77,39 +86,75 @@ func (t *Token) equals(other *Token) bool {
 	return t.value == other.value && t.kind == other.kind
 }
 
+func (t Token) bindingPower() uint {
+	switch t.kind {
+	case keywordKind:
+		switch keyword(t.value) {
+		case AndKeyword:
+			fallthrough
+		case OrKeyword:
+			return 1
+		}
+	case symbolKind:
+		switch symbol(t.value) {
+		case EqSymbol:
+			fallthrough
+		case NeqSymbol:
+			return 2
+
+		case LtSymbol:
+			fallthrough
+		case GtSymbol:
+			return 3
+
+		case LteSymbol:
+			fallthrough
+		case GteSymbol:
+			return 4
+
+		case ConcatSymbol:
+			fallthrough
+		case PlusSymbol:
+			return 5
+		}
+	}
+
+	return 0
+}
+
 type lexer func(string, cursor) (*Token, cursor, bool)
 
 func lex(source string) ([]*Token, error) {
-    tokens := []*Token{}
-    cur := cursor{}
+	var tokens []*Token
+	cur := cursor{}
 
 lex:
-    for cur.pointer < uint(len(source)) {
-        lexers := []lexer{lexKeyword, lexSymbol, lexString, lexNumeric, lexIdentifier}
-        for _, l := range lexers {
-            if token, newCursor, ok := l(source, cur); ok {
-                cur = newCursor
+	for cur.pointer < uint(len(source)) {
+		lexers := []lexer{lexKeyword, lexSymbol, lexString, lexNumeric, lexIdentifier}
+		for _, l := range lexers {
+			if token, newCursor, ok := l(source, cur); ok {
+				cur = newCursor
 
-                // Omit nil tokens for valid, but empty syntax like newlines
-                if token != nil {
-                    tokens = append(tokens, token)
-                } 
+				// Omit nil tokens for valid, but empty syntax like newlines
+				if token != nil {
+					tokens = append(tokens, token)
+				}
 
-                continue lex
-            }
-        }
-
-        hint := ""
-        if len(tokens) > 0 {
-            hint = " after " + tokens[len(tokens)-1].value
-        }
-		if(cur.pointer == (uint(len(source)) - 1)) {
-			break;
+				continue lex
+			}
 		}
-        return nil, fmt.Errorf("Unable to lex token%s, at %d:%d", hint, cur.loc.line, cur.loc.col)
-    }
 
-    return tokens, nil
+		hint := ""
+		if len(tokens) > 0 {
+			hint = " after " + tokens[len(tokens)-1].value
+		}
+		for _, t := range tokens {
+			fmt.Println(t.value)
+		}
+		return nil, fmt.Errorf("Unable to lex token%s, at %d:%d", hint, cur.loc.line, cur.loc.col)
+	}
+
+	return tokens, nil
 }
 
 // longestMatch iterates through a source string starting at the given
@@ -401,7 +446,16 @@ func lexSymbol(source string, ic cursor) (*Token, cursor, bool) {
 	}
 
 	// Syntax that should be kept
-	symbols := []symbol{
+	Symbols := []symbol{
+		EqSymbol,
+		NeqSymbol,
+		NeqSymbol2,
+		LtSymbol,
+		LteSymbol,
+		GtSymbol,
+		GteSymbol,
+		ConcatSymbol,
+		PlusSymbol,
 		commaSymbol,
 		leftparenSymbol,
 		rightparenSymbol,
@@ -410,7 +464,7 @@ func lexSymbol(source string, ic cursor) (*Token, cursor, bool) {
 	}
 
 	var options []string
-	for _, s := range symbols {
+	for _, s := range Symbols {
 		options = append(options, string(s))
 	}
 
@@ -423,6 +477,10 @@ func lexSymbol(source string, ic cursor) (*Token, cursor, bool) {
 
 	cur.pointer = ic.pointer + uint(len(match))
 	cur.loc.col = ic.loc.col + uint(len(match))
+
+	if match == string(NeqSymbol2) {
+		match = string(NeqSymbol)
+	}
 
 	return &Token{
 		value: match,
