@@ -1,7 +1,7 @@
 # sql-repl-go
 🚧 golang sql implementation with REPL
 
-<img width="260" alt="image" src="https://github.com/VasuDevrani/sql-repl-go/assets/101383635/899d4a61-c6c1-4a94-aa0d-5ababa854f4d">
+<img width="260" alt="image" src="https://github.com/VasuDevrani/sql-repl-go/assets/101383635/ae150090-7fdb-4c45-9aa9-22bb18b7bcad">
 
 ## Current support:
 
