@@ -34,7 +34,21 @@ func parseStatement(tokens []*Token, initialCursor uint, delimiter Token) (*Stat
     return nil, initialCursor, false
 }
 
-func parseToken(tokens []*Token, initialCursor uint, kind tokenKind) (*Token, uint, bool) {
+func parseToken(tokens []*Token, initialCursor uint, t Token) (*Token, uint, bool) {
+	cursor := initialCursor
+
+	if cursor >= uint(len(tokens)) {
+		return nil, initialCursor, false
+	}
+
+	if p := tokens[cursor]; t.equals(p) {
+		return p, cursor + 1, true
+	}
+
+	return nil, initialCursor, false
+}
+
+func parseTokenKind(tokens []*Token, initialCursor uint, kind tokenKind) (*Token, uint, bool) {
     cursor := initialCursor
 
     if cursor >= uint(len(tokens)) {
@@ -42,7 +56,6 @@ func parseToken(tokens []*Token, initialCursor uint, kind tokenKind) (*Token, ui
     }
 
     current := tokens[cursor]
-
     if current.kind == kind {
         return current, cursor + 1, true
     }
@@ -50,63 +63,144 @@ func parseToken(tokens []*Token, initialCursor uint, kind tokenKind) (*Token, ui
     return nil, initialCursor, false
 }
 
-func parseExpressions(tokens []*Token, initialCursor uint, delimiters []Token) (*[]*expression, uint, bool) {
+func parseLiteralExpression(tokens []*Token, initialCursor uint) (*expression, uint, bool) {
+	cursor := initialCursor
+
+	kinds := []tokenKind{identifierKind, numericKind, stringKind, boolKind, nullKind}
+	for _, kind := range kinds {
+		t, newCursor, ok := parseTokenKind(tokens, cursor, kind)
+		if ok {
+			return &expression{
+				literal: t,
+				kind:    literalKind,
+			}, newCursor, true
+		}
+	}
+
+	return nil, initialCursor, false
+}
+
+func parseExpressions(tokens []*Token, initialCursor uint, delimiter Token) (*[]*expression, uint, bool) {
+	cursor := initialCursor
+
+	var exps []*expression
+	for {
+		if cursor >= uint(len(tokens)) {
+			return nil, initialCursor, false
+		}
+
+		current := tokens[cursor]
+		if delimiter.equals(current) {
+			break
+		}
+
+		if len(exps) > 0 {
+			var ok bool
+			_, cursor, ok = parseToken(tokens, cursor, tokenFromSymbol(commaSymbol))
+			if !ok {
+				helpMessage(tokens, cursor, "Expected comma")
+				return nil, initialCursor, false
+			}
+		}
+
+		exp, newCursor, ok := parseExpression(tokens, cursor, []Token{tokenFromSymbol(commaSymbol), tokenFromSymbol(rightparenSymbol)}, 0)
+		if !ok {
+			helpMessage(tokens, cursor, "Expected expression")
+			return nil, initialCursor, false
+		}
+		cursor = newCursor
+
+		exps = append(exps, exp)
+	}
+
+	return &exps, cursor, true
+}
+
+func parseExpression(tokens []*Token, initialCursor uint, delimiters []Token, minBp uint) (*expression, uint, bool) {
     cursor := initialCursor
 
-    exps := []*expression{}
-outer:
-    for {
-        if cursor >= uint(len(tokens)) {
-            break;
+    var exp *expression
+    _, newCursor, ok := parseToken(tokens, cursor, tokenFromSymbol(leftparenSymbol))
+    if ok {
+        cursor = newCursor
+        rightParenToken := tokenFromSymbol(rightparenSymbol)
+
+        exp, cursor, ok = parseExpression(tokens, cursor, append(delimiters, rightParenToken), minBp)
+        if !ok {
+            helpMessage(tokens, cursor, "Expected expression after opening paren")
+            return nil, initialCursor, false
         }
 
-        // Look for delimiter
-        current := tokens[cursor]
-        for _, delimiter := range delimiters {
-            if delimiter.equals(current) {
+        _, cursor, ok = parseToken(tokens, cursor, rightParenToken)
+        if !ok {
+            helpMessage(tokens, cursor, "Expected closing paren")
+            return nil, initialCursor, false
+        }
+    } else {
+        exp, cursor, ok = parseLiteralExpression(tokens, cursor)
+        if !ok {
+            return nil, initialCursor, false
+        }
+    }
+
+    lastCursor := cursor
+outer:
+    for cursor < uint(len(tokens)) {
+        for _, d := range delimiters {
+            _, _, ok = parseToken(tokens, cursor, d)
+            if ok {
                 break outer
             }
         }
 
-        // Look for comma
-        if len(exps) > 0 {
-            if !expectToken(tokens, cursor, tokenFromSymbol(commaSymbol)) {
-                helpMessage(tokens, cursor, "Expected comma")
-                return nil, initialCursor, false
-            }
-
-            cursor++
+        binOps := []Token{
+            tokenFromKeyword(AndKeyword),
+            tokenFromKeyword(OrKeyword),
+            tokenFromSymbol(EqSymbol),
+            tokenFromSymbol(NeqSymbol),
+            tokenFromSymbol(ConcatSymbol),
+            tokenFromSymbol(PlusSymbol),
         }
 
-        // Look for expression
-        exp, newCursor, ok := parseExpression(tokens, cursor, tokenFromSymbol(commaSymbol))
-        if !ok {
-            helpMessage(tokens, cursor, "Expected expression")
+        var op *Token = nil
+        for _, bo := range binOps {
+            var t *Token
+            t, cursor, ok = parseToken(tokens, cursor, bo)
+            if ok {
+                op = t
+                break
+            }
+        }
+
+        if op == nil {
+            helpMessage(tokens, cursor, "Expected binary operator")
             return nil, initialCursor, false
         }
-        cursor = newCursor
 
-        exps = append(exps, exp)
-    }
-
-    return &exps, cursor, true
-}
-
-func parseExpression(tokens []*Token, initialCursor uint, _ Token) (*expression, uint, bool) {
-    cursor := initialCursor
-
-    kinds := []tokenKind{identifierKind, numericKind, stringKind}
-    for _, kind := range kinds {
-        t, newCursor, ok := parseToken(tokens, cursor, kind)
-        if ok {
-            return &expression{
-                literal: t,
-                kind:    literalKind,
-            }, newCursor, true
+        bp := op.bindingPower()
+        if bp < minBp {
+            cursor = lastCursor
+            break
         }
+
+        b, newCursor, ok := parseExpression(tokens, cursor, delimiters, bp)
+        if !ok {
+            helpMessage(tokens, cursor, "Expected right operand")
+            return nil, initialCursor, false
+        }
+        exp = &expression{
+            binary: &binaryExpression{
+                *exp,
+                *b,
+                *op,
+            },
+            kind: binaryKind,
+        }
+        cursor = newCursor
+        lastCursor = cursor
     }
 
-    return nil, initialCursor, false
+    return exp, cursor, true
 }
 
 func parseColumnDefinitions(tokens []*Token, initialCursor uint, delimiter Token) (*[]*columnDefinition, uint, bool) {
@@ -135,7 +229,7 @@ func parseColumnDefinitions(tokens []*Token, initialCursor uint, delimiter Token
         }
 
         // Look for a column name
-        id, newCursor, ok := parseToken(tokens, cursor, identifierKind)
+        id, newCursor, ok := parseTokenKind(tokens, cursor, identifierKind)
         if !ok {
             helpMessage(tokens, cursor, "Expected column name")
             return nil, initialCursor, false
@@ -143,7 +237,7 @@ func parseColumnDefinitions(tokens []*Token, initialCursor uint, delimiter Token
         cursor = newCursor
 
         // Look for a column type
-        ty, newCursor, ok := parseToken(tokens, cursor, keywordKind)
+        ty, newCursor, ok := parseTokenKind(tokens, cursor, keywordKind)
         if !ok {
             helpMessage(tokens, cursor, "Expected column type")
             return nil, initialCursor, false
@@ -157,4 +251,65 @@ func parseColumnDefinitions(tokens []*Token, initialCursor uint, delimiter Token
     }
 
     return &cds, cursor, true
+}
+
+func parseSelectItem(tokens []*Token, initialCursor uint, delimiters []Token) (*[]*SelectItem, uint, bool) {
+	cursor := initialCursor
+
+	var s []*SelectItem
+outer:
+	for {
+		if cursor >= uint(len(tokens)) {
+			return nil, initialCursor, false
+		}
+
+		current := tokens[cursor]
+		for _, delimiter := range delimiters {
+			if delimiter.equals(current) {
+				break outer
+			}
+		}
+
+		var ok bool
+		if len(s) > 0 {
+			_, cursor, ok = parseToken(tokens, cursor, tokenFromSymbol(commaSymbol))
+			if !ok {
+				helpMessage(tokens, cursor, "Expected comma")
+				return nil, initialCursor, false
+			}
+		}
+
+		var si SelectItem
+		_, cursor, ok = parseToken(tokens, cursor, tokenFromSymbol(asteriskSymbol))
+		if ok {
+			si = SelectItem{Asterisk: true}
+		} else {
+			asToken := tokenFromKeyword(AsKeyword)
+			delimiters := append(delimiters, tokenFromSymbol(commaSymbol), asToken)
+			exp, newCursor, ok := parseExpression(tokens, cursor, delimiters, 0)
+			if !ok {
+				helpMessage(tokens, cursor, "Expected expression")
+				return nil, initialCursor, false
+			}
+
+			cursor = newCursor
+			si.Exp = exp
+
+			_, cursor, ok = parseToken(tokens, cursor, asToken)
+			if ok {
+				id, newCursor, ok := parseTokenKind(tokens, cursor, identifierKind)
+				if !ok {
+					helpMessage(tokens, cursor, "Expected identifier after AS")
+					return nil, initialCursor, false
+				}
+
+				cursor = newCursor
+				si.As = id
+			}
+		}
+
+		s = append(s, &si)
+	}
+
+	return &s, cursor, true
 }
