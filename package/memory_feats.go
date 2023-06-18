@@ -82,16 +82,41 @@ func (mb *MemoryBackend) Select(slct *SelectStatement) (*Results, error) {
 	}
 
 	results := [][]Cell{}
-	columns := []struct {
-		Type ColumnType
-		Name string
-	}{}
+	columns := []ResultColumn{}
 
 	if slct.from == nil {
-		t = &table{}
+		t := &table{}
 		t.rows = [][]MemoryCell{{}}
 	}
 
+	// Expand SELECT * at the AST level into a SELECT on all columns
+	finalItems := []*SelectItem{}
+	for _, item := range *slct.item {
+		if item.Asterisk {
+			newItems := []*SelectItem{}
+			for j := 0; j < len(t.columns); j++ {
+				newSelectItem := &SelectItem{
+					Exp: &expression{
+						literal: &Token{
+							value: t.columns[j],
+							kind:  identifierKind,
+							loc:   location{0, uint(len("SELECT") + 1)},
+						},
+						binary: nil,
+						kind:   literalKind,
+					},
+					Asterisk: false,
+					As:       nil,
+				}
+				newItems = append(newItems, newSelectItem)
+			}
+			finalItems = append(finalItems, newItems...)
+		} else {
+			finalItems = append(finalItems, item)
+		}
+	}
+
+	rowIndex := -1
 	for i := range t.rows {
 		result := []Cell{}
 		isFirstRow := len(results) == 0
@@ -107,23 +132,16 @@ func (mb *MemoryBackend) Select(slct *SelectStatement) (*Results, error) {
 			}
 		}
 
-		for _, col := range *slct.item {
-			if col.Asterisk {
-				// TODO: handle asterisk
-				fmt.Println("Skipping asterisk.")
-				continue
-			}
+		rowIndex++
 
+		for _, col := range finalItems {
 			value, columnName, columnType, err := t.evaluateCell(uint(i), *col.Exp)
 			if err != nil {
 				return nil, err
 			}
 
 			if isFirstRow {
-				columns = append(columns, struct {
-					Type ColumnType
-					Name string
-				}{
+				columns = append(columns, ResultColumn{
 					Type: columnType,
 					Name: columnName,
 				})
