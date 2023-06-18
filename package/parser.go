@@ -43,7 +43,6 @@ func Parse(source string) (*Ast, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	a := Ast{}
 	cursor := uint(0)
 	for cursor < uint(len(tokens)) {

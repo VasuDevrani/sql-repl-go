@@ -69,6 +69,12 @@ func RunRepl(mb *MemoryBackend) {
 
 					fmt.Println()
 				}
+				rows := results.Rows
+				if len(rows) == 1 {
+					fmt.Println("(1 result)")
+				} else {
+					fmt.Printf("(%d results)\n", len(rows))
+				}
 
 				fmt.Println("ok")
 			}

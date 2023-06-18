@@ -148,8 +148,11 @@ lex:
 		if len(tokens) > 0 {
 			hint = " after " + tokens[len(tokens)-1].value
 		}
-		for _, t := range tokens {
-			fmt.Println(t.value)
+		// for _, t := range tokens {
+		// 	fmt.Println(t.value)
+		// }
+		if(cur.pointer == (uint(len(source)) - 1)) {
+			break;
 		}
 		return nil, fmt.Errorf("Unable to lex token%s, at %d:%d", hint, cur.loc.line, cur.loc.col)
 	}
@@ -208,6 +211,8 @@ func longestMatch(source string, ic cursor, options []string) string {
 func lexIdentifier(source string, ic cursor) (*Token, cursor, bool) {
 	// Handle separately if is a double-quoted identifier
 	if token, newCursor, ok := lexCharacterDelimited(source, ic, '"'); ok {
+		// Overwrite from stringkind to identifierkind
+		token.kind = identifierKind
 		return token, newCursor, true
 	}
 
@@ -238,12 +243,8 @@ func lexIdentifier(source string, ic cursor) (*Token, cursor, bool) {
 		break
 	}
 
-	if len(value) == 0 {
-		return nil, ic, false
-	}
-
 	return &Token{
-		// Unquoted dentifiers are case-insensitive
+		// Unquoted identifiers are case-insensitive
 		value: strings.ToLower(string(value)),
 		loc:   ic.loc,
 		kind:  identifierKind,
@@ -252,7 +253,7 @@ func lexIdentifier(source string, ic cursor) (*Token, cursor, bool) {
 
 func lexKeyword(source string, ic cursor) (*Token, cursor, bool) {
 	cur := ic
-	keywords := []keyword{
+	Keywords := []keyword{
 		SelectKeyword,
 		InsertKeyword,
 		ValuesKeyword,
@@ -280,7 +281,7 @@ func lexKeyword(source string, ic cursor) (*Token, cursor, bool) {
 	}
 
 	var options []string
-	for _, k := range keywords {
+	for _, k := range Keywords {
 		options = append(options, string(k))
 	}
 
@@ -360,7 +361,6 @@ func lexNumeric(source string, ic cursor) (*Token, cursor, bool) {
 				cur.pointer++
 				cur.loc.col++
 			}
-
 			continue
 		}
 

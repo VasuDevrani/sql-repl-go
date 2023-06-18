@@ -28,10 +28,12 @@ type expressionKind uint
 
 const (
     literalKind expressionKind = iota
+    binaryKind
 )
 
 type expression struct {
     literal *Token
+    binary  *binaryExpression
     kind    expressionKind
 }
 
@@ -46,7 +48,20 @@ type CreateTableStatement struct {
     cols *[]*columnDefinition
 }
 
+type SelectItem struct {
+	Exp      *expression
+	Asterisk  bool // for *
+	As       *Token
+}
+
 type SelectStatement struct {
-    item []*expression
-    from Token
+	item   *[]*SelectItem
+	from   *Token
+	where  *expression
+}
+
+type binaryExpression struct {
+    a  expression
+    b  expression
+    op Token
 }
