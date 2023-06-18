@@ -10,6 +10,6 @@
 - [x] Insert into table
 - [x] Select from table
 - [ ] Indexing
-- [ ] binary expression and filters
+- [x] binary expression and filters
 - [ ] database driver support
 
