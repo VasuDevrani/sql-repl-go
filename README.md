@@ -1,7 +1,7 @@
 # sql-repl-go
 🚧 golang sql implementation with REPL
 
-<img width="260" alt="image" src="https://github.com/VasuDevrani/sql-repl-go/assets/101383635/ae150090-7fdb-4c45-9aa9-22bb18b7bcad">
+<img width="320" alt="image" src="https://github.com/VasuDevrani/sql-repl-go/assets/101383635/cca2b9e6-438d-43c6-b215-f93a591ba667">
 
 ## Current support:
 
@@ -9,7 +9,7 @@
 - [x] Create table 
 - [x] Insert into table
 - [x] Select from table
-- [ ] Indexing
 - [x] binary expression and filters
-- [ ] database driver support
+- [x] database driver support
+- [ ] Indexing
 
