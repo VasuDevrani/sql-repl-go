@@ -1,4 +1,4 @@
-package sqlgo
+package pck
 
 import (
 	"fmt"
@@ -151,8 +151,8 @@ lex:
 		// for _, t := range tokens {
 		// 	fmt.Println(t.value)
 		// }
-		if(cur.pointer == (uint(len(source)) - 1)) {
-			break;
+		if cur.pointer == (uint(len(source)) - 1) {
+			break
 		}
 		return nil, fmt.Errorf("Unable to lex token%s, at %d:%d", hint, cur.loc.line, cur.loc.col)
 	}

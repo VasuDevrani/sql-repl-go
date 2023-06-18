@@ -1,67 +1,67 @@
-package sqlgo
+package pck
 
 type Ast struct {
-    Statements []*Statement
+	Statements []*Statement
 }
 
 type AstKind uint
 
 const (
-    SelectKind AstKind = iota
-    CreateTableKind
-    InsertKind
+	SelectKind AstKind = iota
+	CreateTableKind
+	InsertKind
 )
 
 type Statement struct {
-    SelectStatement      *SelectStatement
-    CreateTableStatement *CreateTableStatement
-    InsertStatement      *InsertStatement
-    Kind                 AstKind
+	SelectStatement      *SelectStatement
+	CreateTableStatement *CreateTableStatement
+	InsertStatement      *InsertStatement
+	Kind                 AstKind
 }
 
 type InsertStatement struct {
-    table  Token
-    values *[]*expression
+	table  Token
+	values *[]*expression
 }
 
 type expressionKind uint
 
 const (
-    literalKind expressionKind = iota
-    binaryKind
+	literalKind expressionKind = iota
+	binaryKind
 )
 
 type expression struct {
-    literal *Token
-    binary  *binaryExpression
-    kind    expressionKind
+	literal *Token
+	binary  *binaryExpression
+	kind    expressionKind
 }
 
 type columnDefinition struct {
-    name     Token
-    datatype Token
-    primaryKey bool
+	name       Token
+	datatype   Token
+	primaryKey bool
 }
 
 type CreateTableStatement struct {
-    name Token
-    cols *[]*columnDefinition
+	name Token
+	cols *[]*columnDefinition
 }
 
 type SelectItem struct {
 	Exp      *expression
-	Asterisk  bool // for *
+	Asterisk bool // for *
 	As       *Token
 }
 
 type SelectStatement struct {
-	item   *[]*SelectItem
-	from   *Token
-	where  *expression
+	item  *[]*SelectItem
+	from  *Token
+	where *expression
 }
 
 type binaryExpression struct {
-    a  expression
-    b  expression
-    op Token
+	a  expression
+	b  expression
+	op Token
 }

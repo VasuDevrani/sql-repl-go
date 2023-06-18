@@ -1,4 +1,4 @@
-package sqlgo
+package pck
 
 import "errors"
 

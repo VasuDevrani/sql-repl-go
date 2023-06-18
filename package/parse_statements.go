@@ -1,4 +1,4 @@
-package sqlgo
+package pck
 
 func parseSelectStatement(tokens []*Token, initialCursor uint, delimiter Token) (*SelectStatement, uint, bool) {
 	var ok bool

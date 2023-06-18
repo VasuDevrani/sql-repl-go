@@ -1,4 +1,4 @@
-package sqlgo
+package pck
 
 import (
 	"fmt"
@@ -135,8 +135,17 @@ func (mb *MemoryBackend) Select(slct *SelectStatement) (*Results, error) {
 		results = append(results, result)
 	}
 
+	var resultColumns []ResultColumn
+
+	for _, col := range columns {
+		resultColumns = append(resultColumns, ResultColumn{
+			Type: col.Type,
+			Name: col.Name,
+		})
+	}
+
 	return &Results{
-		Columns: columns,
+		Columns: resultColumns,
 		Rows:    results,
 	}, nil
 }
