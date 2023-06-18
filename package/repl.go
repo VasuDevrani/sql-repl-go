@@ -1,83 +1,144 @@
 package pck
 
 import (
-	"bufio"
+	"io"
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/chzyer/readline"
+	"github.com/olekukonko/tablewriter"
 )
 
-func RunRepl(mb *MemoryBackend) {
-	reader := bufio.NewReader(os.Stdin)
+func doSelect(mb Backend, slct *SelectStatement) error {
+	results, err := mb.Select(slct)
+	if err != nil {
+		return err
+	}
+
+	if len(results.Rows) == 0 {
+		fmt.Println("(no results)")
+		return nil
+	}
+
+	table := tablewriter.NewWriter(os.Stdout)
+	header := []string{}
+	for _, col := range results.Columns {
+		header = append(header, col.Name)
+	}
+	table.SetHeader(header)
+	table.SetAutoFormatHeaders(false)
+
+	rows := [][]string{}
+	for _, result := range results.Rows {
+		row := []string{}
+		for i, cell := range result {
+			typ := results.Columns[i].Type
+			r := ""
+			switch typ {
+			case IntType:
+				i := cell.AsInt()
+				if &i != nil {
+					r = fmt.Sprintf("%d", i)
+				}
+			case TextType:
+				s := cell.AsText()
+				if &s != nil {
+					r = s
+				}
+			case BoolType:
+				b := cell.AsBool()
+				if &b != nil {
+					r = "t"
+					if !b {
+						r = "f"
+					}
+				}
+			}
+
+			row = append(row, r)
+		}
+
+		rows = append(rows, row)
+	}
+
+	table.SetBorder(false)
+	table.AppendBulk(rows)
+	table.Render()
+
+	if len(rows) == 1 {
+		fmt.Println("(1 result)")
+	} else {
+		fmt.Printf("(%d results)\n", len(rows))
+	}
+
+	return nil
+}
+
+func RunRepl(b Backend) {
+	l, err := readline.NewEx(&readline.Config{
+		Prompt:          "# ",
+		HistoryFile:     "/tmp/tmp",
+		InterruptPrompt: "^C",
+		EOFPrompt:       "exit",
+	})
+	if err != nil {
+		panic(err)
+	}
+	defer l.Close()
+
 	fmt.Println("Welcome to gosql.")
+repl:
 	for {
 		fmt.Print("# ")
-		text, err := reader.ReadString('\n')
-		text = strings.Replace(text, "\n", "", -1)
-
-		ast, err := Parse(text)
+		line, err := l.Readline()
+		if err == readline.ErrInterrupt {
+			if len(line) == 0 {
+				break
+			} else {
+				continue repl
+			}
+		} else if err == io.EOF {
+			break
+		}
 		if err != nil {
-			panic(err)
+			fmt.Println("Error while reading line:", err)
+			continue repl
+		}
+
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "quit" || trimmed == "exit" || trimmed == "\\q" {
+			break
+		}
+		
+		ast, err := Parse(line)
+		if err != nil {
+			fmt.Println("Error while parsing:", err)
+			continue repl
 		}
 
 		for _, stmt := range ast.Statements {
 			switch stmt.Kind {
 			case CreateTableKind:
-				err = mb.CreateTable(ast.Statements[0].CreateTableStatement)
+				err = b.CreateTable(ast.Statements[0].CreateTableStatement)
 				if err != nil {
-					panic(err)
+					fmt.Println("Error creating table:", err)
+					continue repl
 				}
-				fmt.Println("ok")
 			case InsertKind:
-				err = mb.Insert(stmt.InsertStatement)
+				err = b.Insert(stmt.InsertStatement)
 				if err != nil {
-					panic(err)
+					fmt.Println("Error inserting values:", err)
+					continue repl
 				}
-
-				fmt.Println("ok")
 			case SelectKind:
-				results, err := mb.Select(stmt.SelectStatement)
+				err := doSelect(b, stmt.SelectStatement)
 				if err != nil {
-					panic(err)
+					fmt.Println("Error selecting values:", err)
+					continue repl
 				}
-
-				for _, col := range results.Columns {
-					fmt.Printf("| %s ", col.Name)
-				}
-				fmt.Println("|")
-
-				for i := 0; i < 20; i++ {
-					fmt.Printf("=")
-				}
-				fmt.Println()
-
-				for _, result := range results.Rows {
-					fmt.Printf("|")
-
-					for i, cell := range result {
-						typ := results.Columns[i].Type
-						s := ""
-						switch typ {
-						case IntType:
-							s = fmt.Sprintf("%d", cell.AsInt())
-						case TextType:
-							s = cell.AsText()
-						}
-
-						fmt.Printf(" %s | ", s)
-					}
-
-					fmt.Println()
-				}
-				rows := results.Rows
-				if len(rows) == 1 {
-					fmt.Println("(1 result)")
-				} else {
-					fmt.Printf("(%d results)\n", len(rows))
-				}
-
-				fmt.Println("ok")
 			}
 		}
+		fmt.Println("ok")
 	}
 }
