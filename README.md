@@ -1,7 +1,37 @@
 # sql-repl-go
 🚧 golang sql implementation with REPL
 
-<img width="320" alt="image" src="https://github.com/VasuDevrani/sql-repl-go/assets/101383635/cca2b9e6-438d-43c6-b215-f93a591ba667">
+```shell
+$ git clone github.com/VasuDevrani/sql-repl-go.git
+$ cd sql-repl-go
+$ go run cmd/main.go
+Welcome to gosql.
+# CREATE TABLE users (name TEXT, age INT);
+ok
+#  INSERT INTO users VALUES ('Stephen', 16);
+ok
+# SELECT name, age FROM users;
+name   | age
+----------+------
+Stephen |  16
+(1 result)
+ok
+# INSERT INTO users VALUES ('Adrienne', 23);
+ok
+# SELECT age + 2, name FROM users WHERE age = 23;
+age |   name
+------+-----------
+25 | Adrienne
+(1 result)
+ok
+# SELECT name FROM users;
+name
+------------
+Stephen
+Adrienne
+(2 results)
+ok
+```
 
 ## Current support:
 
